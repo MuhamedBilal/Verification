@@ -1,17 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   startSmileVerification,
+  // SmileVerificationPayload,
   kycStatus,
   uploadImage,
   ImageUploadPayload,
 } from '../api/verificationApi';
 import '@smileid/web-components';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import KycStatusChip from '../utils/KycStatus';
 import { toast } from 'react-toastify';
-import useModalStore from '../stores/modalStore';
+
+type StatusType = 'pending' | 'approved' | 'rejected' | 'not_started';
 
 declare global {
+  // eslint-disable-next-line
   namespace JSX {
     interface IntrinsicElements {
       'smart-camera-web': React.DetailedHTMLProps<
@@ -26,7 +29,6 @@ export function Verification() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const smartCameraRef = useRef<HTMLElement>(null);
   const queryClient = useQueryClient();
-  const { openModal } = useModalStore();
 
   const { mutate } = useMutation({
     mutationFn: startSmileVerification,
@@ -83,15 +85,10 @@ export function Verification() {
               return;
           }
 
-          try {
-            await uploadImageMutation.mutateAsync({
-              code,
-              image: imageData.image,
-            });
-          } catch (error) {
-            console.error(`Failed to upload ${code}:`, error);
-            toast.error(`Failed to upload ${code}`);
-          }
+          await uploadImageMutation.mutateAsync({
+            code,
+            image: imageData.image,
+          });
         }
       );
       mutate(e.detail);
@@ -110,6 +107,7 @@ export function Verification() {
     cameraEl.addEventListener('smart-camera-web.publish', handlePublish);
     cameraEl.addEventListener('smart-camera-web.cancelled', handleCancelled);
     cameraEl.addEventListener('smile-event', handleSmileEvent);
+    console.log('[SmileID] Event listeners attached');
 
     return () => {
       cameraEl.removeEventListener('smart-camera-web.publish', handlePublish);
@@ -119,7 +117,7 @@ export function Verification() {
       );
       cameraEl.removeEventListener('smile-event', handleSmileEvent);
     };
-  }, [isModalOpen, mutate, uploadImageMutation]);
+  }, [isModalOpen]);
 
   const toggleModal = () => {
     setIsModalOpen(!isModalOpen);
@@ -134,7 +132,6 @@ export function Verification() {
       toggleModal();
     }
   };
-
   const renderArrowOrStatus = () => {
     if (
       statusData?.kycStatus === 'pending' ||
@@ -142,21 +139,38 @@ export function Verification() {
       statusData?.kycStatus === 'rejected'
     ) {
       return <KycStatusChip status={statusData?.kycStatus} />;
+    } else {
+      return (
+        <div className='flex items-center space-x-2'>
+          <KycStatusChip status={statusData.kycStatus} />
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            fill='none'
+            viewBox='0 0 24 24'
+            strokeWidth='2'
+            stroke='currentColor'
+            className='h-5 w-5 text-customGray-500'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              d='M9 5l7 7-7 7'
+            />
+          </svg>
+        </div>
+      );
     }
     return (
-      <div className='flex items-center space-x-2'>
-        <KycStatusChip status={statusData?.kycStatus || 'not_started'} />
-        <svg
-          xmlns='http://www.w3.org/2000/svg'
-          fill='none'
-          viewBox='0 0 24 24'
-          strokeWidth='2'
-          stroke='currentColor'
-          className='h-5 w-5 text-gray-500'
-        >
-          <path strokeLinecap='round' strokeLinejoin='round' d='M9 5l7 7-7 7' />
-        </svg>
-      </div>
+      <svg
+        xmlns='http://www.w3.org/2000/svg'
+        fill='none'
+        viewBox='0 0 24 24'
+        strokeWidth='2'
+        stroke='currentColor'
+        className='h-5 w-5 text-customGray-500'
+      >
+        <path strokeLinecap='round' strokeLinejoin='round' d='M9 5l7 7-7 7' />
+      </svg>
     );
   };
 
@@ -167,20 +181,33 @@ export function Verification() {
     </div>
   );
 
+  const renderStatus = () => {
+    const currentStatus: StatusType =
+      (statusData?.kycStatus as StatusType) || 'not_started';
+    return (
+      <div className='mt-4 flex items-center gap-2'>
+        <span className='text-sm font-medium text-gray-700'>Status:</span>
+        <KycStatusChip status={currentStatus} />
+      </div>
+    );
+  };
+
   return (
     <div className='p-0 md:p-6'>
-      <h1 className='mb-4 text-2xl font-medium text-gray-900'>Verification</h1>
+      <h1 className='mb-4 text-2xl font-medium text-customGray-900'>
+        Verification
+      </h1>
       {isLoading || isError ? (
         renderSkeleton()
       ) : (
-        <div
-          className='cursor-pointer rounded-xl border border-gray-200 bg-gray-50 px-3 py-4 transition duration-200 hover:bg-gray-100 md:p-6'
+        <button
+          className='cursor-pointer rounded-xl border border-customGray-200 bg-customGray-50 px-3 py-4 transition duration-200 hover:bg-customGray-100 md:p-6'
           onClick={handleCardClick}
         >
           <div className='flex items-center justify-between'>
             <div>
               <div className='flex items-center justify-between gap-2'>
-                <h2 className='mb-2 text-nowrap text-xl font-medium text-gray-900'>
+                <h2 className='mb-2 text-nowrap text-xl font-medium text-customGray-900'>
                   Verification of identity
                 </h2>
                 <span className='md:hidden'>
@@ -191,7 +218,7 @@ export function Verification() {
                   )}
                 </span>
               </div>
-              <p className='text-base font-normal text-gray-500'>
+              <p className='text-base font-normal text-customGray-500'>
                 Provide personal details and upload valid documents to verify
                 your identity.
               </p>
@@ -200,7 +227,7 @@ export function Verification() {
               {isLoading || isError ? <div>...</div> : renderArrowOrStatus()}
             </div>
           </div>
-        </div>
+        </button>
       )}
       {isModalOpen && (
         <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'>
@@ -210,23 +237,15 @@ export function Verification() {
                 Verification
               </h2>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleModal();
-                }}
+                onClick={toggleModal}
                 className='text-gray-500 hover:text-gray-700'
               >
                 &times;
               </button>
             </div>
+
             <div className='custom-select__menu-list mt-4 max-h-[600px] overflow-y-auto'>
-              <smart-camera-web
-                ref={smartCameraRef}
-                capture-id
-                partner-id={import.meta.env.VITE_PARTNER_ID}
-                api-key={import.meta.env.VITE_SMILE_API_KEY}
-                environment='sandbox'
-              />
+              <smart-camera-web ref={smartCameraRef} capture-id />
             </div>
           </div>
         </div>

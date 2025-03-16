@@ -22,7 +22,7 @@ export const startSmileVerification = async (
 
 export const kycStatus = async () => {
   return {
-    kycStatus: 'pending',
+    kycStatus: 'rejected',
   };
 };
 
